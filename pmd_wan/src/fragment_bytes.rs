@@ -21,6 +21,8 @@ pub enum FragmentBytesToImageError {
     NoFragmentBytes(usize),
     #[error("Failed to decode the FragmentBytes")]
     CantDecodeFragmentBytes(#[from] DecodeFragmentBytesError),
+    #[error("cannot paster image")]
+    ImagePasteError(#[from] image::ImageError),
 }
 
 #[derive(Debug)]
@@ -51,13 +53,7 @@ impl FragmentBytesAssemblyEntry {
     }
 
     pub fn write<F: Write>(&self, file: &mut F) -> Result<(), WanError> {
-        (
-            self.pixel_src as u32,
-            self.byte_amount,
-            0u16,
-            self._z_index,
-        )
-            .write(file)?;
+        (self.pixel_src as u32, self.byte_amount, 0u16, self._z_index).write(file)?;
         Ok(())
     }
 }

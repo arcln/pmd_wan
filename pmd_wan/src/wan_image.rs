@@ -8,7 +8,7 @@ use anyhow::Context;
 use binread::BinReaderExt;
 use binwrite::BinWrite;
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use image::{ImageBuffer, Rgba};
+use image::{GenericImage, ImageBuffer, Rgba};
 use pmd_sir0::write_sir0_footer;
 use std::io::{Read, Seek, SeekFrom, Write};
 
@@ -226,8 +226,7 @@ impl WanImage {
             "start of frames reference: {}",
             file.seek(SeekFrom::Current(0))?
         );
-        let (frames_references, size_to_allocate_for_max_frame) =
-            self.frame_store.write(file)?;
+        let (frames_references, size_to_allocate_for_max_frame) = self.frame_store.write(file)?;
 
         trace!(
             "start of the animation offset: {}",
@@ -417,6 +416,27 @@ impl WanImage {
         };
 
         image_bytes.get_image(&self.palette, &fragment.resolution, fragment.pal_idx)
+    }
+
+    pub fn get_image_for_frame(
+        &self,
+        frame_index: usize,
+    ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, FragmentBytesToImageError> {
+        let frame = &self.frame_store.frames[frame_index];
+        let mut buffer = ImageBuffer::new(1024, 1024);
+
+        for fragment in &frame.fragments {
+            let fragment_image = self.get_image_for_fragment(&fragment)?;
+            buffer
+                .copy_from(
+                    &fragment_image,
+                    (fragment.offset_x as i32 + 512) as u32,
+                    (fragment.offset_y as i32 + 512) as u32,
+                )
+                .map_err(FragmentBytesToImageError::ImagePasteError)?;
+        }
+
+        Ok(buffer)
     }
 
     pub fn fix_empty_frames(&mut self) {
