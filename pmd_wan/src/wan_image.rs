@@ -3,7 +3,6 @@ use crate::{
     Fragment, FragmentBytes, FragmentBytesToImageError, FragmentFlip, FragmentResolution, Frame,
 };
 use crate::{FragmentBytesStore, FrameStore, Palette, SpriteType, WanError};
-
 use anyhow::Context;
 use binread::BinReaderExt;
 use binwrite::BinWrite;
@@ -435,7 +434,7 @@ impl WanImage {
         frame_index: usize,
     ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, FragmentBytesToImageError> {
         let frame = &self.frame_store.frames[frame_index];
-        let size = 64;
+        let size = 256;
         let mut buffer = ImageBuffer::new(size, size);
 
         for fragment in &frame.fragments {
