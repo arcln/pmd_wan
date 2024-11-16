@@ -262,13 +262,14 @@ fn insert_fragment_pos_in_wan_image(
                 unk1: 0,
                 unk3_4: None,
                 unk5: false,
-                fragment_bytes_index: image_bytes_index,
+                fragment_bytes_index: image_bytes_index as i16,
                 offset_y,
                 offset_x: fragment_x.try_into().context("The image is too high")?,
                 flip: FragmentFlip::standard(),
                 is_mosaic: false,
                 pal_idx: pal_id,
                 resolution: fragment_size,
+                tile_num: 0,
             });
         }
     }

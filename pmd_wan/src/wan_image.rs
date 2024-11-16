@@ -7,8 +7,8 @@ use anyhow::Context;
 use binread::BinReaderExt;
 use binwrite::BinWrite;
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use image::imageops::{flip_horizontal_in_place, flip_vertical_in_place};
-use image::{GenericImage, ImageBuffer, Rgba};
+use image::imageops::{self, flip_horizontal_in_place, flip_vertical_in_place};
+use image::{ImageBuffer, Rgba};
 use pmd_sir0::write_sir0_footer;
 use std::io::{Read, Seek, SeekFrom, Write};
 
@@ -400,17 +400,28 @@ impl WanImage {
     /// Doesn't perform flipping or any other transformation other than the resolution and the palette.
     pub fn get_image_for_fragment(
         &self,
+        frame: &Frame,
         fragment: &Fragment,
+        fragment_index: usize,
     ) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, FragmentBytesToImageError> {
-        let image_bytes = match self
-            .fragment_bytes_store
-            .fragment_bytes
-            .get(fragment.fragment_bytes_index)
-        {
+        let fragment_index = if fragment.fragment_bytes_index >= 0 {
+            fragment.fragment_bytes_index as usize
+        } else {
+            let mut prev_index = fragment_index - 1;
+            while frame.fragments[prev_index].fragment_bytes_index < 0
+                || frame.fragments[prev_index].tile_num != fragment.tile_num
+            {
+                prev_index -= 1;
+            }
+
+            frame.fragments[prev_index].fragment_bytes_index as usize
+        };
+
+        let image_bytes = match self.fragment_bytes_store.fragment_bytes.get(fragment_index) {
             Some(b) => b,
             None => {
                 return Err(FragmentBytesToImageError::NoFragmentBytes(
-                    fragment.fragment_bytes_index,
+                    fragment.fragment_bytes_index as usize,
                 ))
             }
         };
@@ -437,15 +448,15 @@ impl WanImage {
         let size = 256;
         let mut buffer = ImageBuffer::new(size, size);
 
-        for fragment in &frame.fragments {
-            let fragment_image = self.get_image_for_fragment(&fragment)?;
-            buffer
-                .copy_from(
-                    &fragment_image,
-                    (fragment.offset_x as i32 + (size as i32 / 2)) as u32,
-                    (fragment.offset_y as i32 + (size as i32 / 2)) as u32,
-                )
-                .map_err(FragmentBytesToImageError::ImagePasteError)?;
+        for (index, fragment) in frame.fragments.iter().enumerate() {
+            let fragment_image = self.get_image_for_fragment(frame, &fragment, index)?;
+
+            imageops::overlay(
+                &mut buffer,
+                &fragment_image,
+                (fragment.offset_x as i32 + (size as i32 / 2)) as i64,
+                (fragment.offset_y as i32 + (size as i32 / 2)) as i64,
+            );
         }
 
         Ok(buffer)
@@ -472,10 +483,11 @@ impl WanImage {
             });
         for empty_frame in collected {
             empty_frame.fragments.push(Fragment {
+                tile_num: 0,
                 unk1: 0,
                 unk3_4: None,
                 unk5: false,
-                fragment_bytes_index: image_bytes_index,
+                fragment_bytes_index: image_bytes_index as i16,
                 offset_y: 0,
                 offset_x: 0,
                 flip: FragmentFlip::standard(),

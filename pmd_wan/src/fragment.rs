@@ -16,13 +16,14 @@ pub struct Fragment {
     /// otherwise the two boolean in the tuple will be used
     pub unk3_4: Option<(bool, bool)>,
     pub unk5: bool, // maybe is "invert palette color"
-    pub fragment_bytes_index: usize,
+    pub fragment_bytes_index: i16,
     pub offset_y: i8,
     pub offset_x: i16,
     pub flip: FragmentFlip,
     pub is_mosaic: bool,
     pub pal_idx: u16,
     pub resolution: FragmentResolution,
+    pub tile_num: u16,
 }
 
 impl Fragment {
@@ -30,22 +31,10 @@ impl Fragment {
     /// The second value is whether the "is_last" bit has been set to true, meaning it's the last Fragment from the Frame
     pub fn new_from_bytes<F: Read>(
         file: &mut F,
-        previous_fragment_bytes: Option<usize>,
+        _previous_fragment_bytes: Option<usize>,
     ) -> Result<(Fragment, bool), WanError> {
         trace!("parsing a fragment");
-        let fragment_bytes_index = match file.read_i16::<LE>()? {
-            -1 => match previous_fragment_bytes {
-                None => return Err(WanError::FragmentBytesIDPointBackButFirstFragment),
-                Some(value) => value,
-            },
-            x => {
-                if x >= 0 {
-                    x as usize
-                } else {
-                    return Err(WanError::FragmentLessThanLessOne(x));
-                }
-            }
-        };
+        let fragment_bytes_index = file.read_i16::<LE>()?;
 
         let unk1 = file.read_u16::<LE>()?;
 
@@ -85,6 +74,7 @@ impl Fragment {
 
         let alloc_and_palette = file.read_u16::<LE>()?;
         let pal_idx = (0xF000 & alloc_and_palette) >> 12;
+        let tile_num = alloc_and_palette & 0x03FF;
 
         Ok((
             Fragment {
@@ -97,6 +87,7 @@ impl Fragment {
                 flip,
                 is_mosaic,
                 pal_idx,
+                tile_num,
                 resolution: match FragmentResolution::from_indice(size_indice_x, size_indice_y) {
                     Some(r) => r,
                     None => {
@@ -122,7 +113,7 @@ impl Fragment {
         let fragment_bytes_index: i16 = match previous_fragment_bytes {
             None => self.fragment_bytes_index as i16,
             Some(value) => {
-                if self.fragment_bytes_index == value {
+                if self.fragment_bytes_index == value as i16 {
                     -1
                 } else {
                     self.fragment_bytes_index as i16

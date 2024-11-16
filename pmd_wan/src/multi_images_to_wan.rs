@@ -315,12 +315,13 @@ impl<'a> FindBiggerFragmentOnSingleGroupStruct<'a> {
                     unk1: 0,
                     unk3_4: None,
                     unk5: false,
-                    fragment_bytes_index: image_bytes_index,
+                    fragment_bytes_index: image_bytes_index as i16,
                     offset_y: usage.y.try_into().unwrap(),
                     offset_x: usage.x.try_into().unwrap(),
                     flip: usage.flip,
                     is_mosaic: false,
                     pal_idx: 0,
+                    tile_num: 0,
                     resolution: FragmentResolution::new(8, 8),
                 });
             }
@@ -449,13 +450,14 @@ impl<'a> FindBiggerFragmentOnSingleGroupStruct<'a> {
                                 unk1: 0,
                                 unk3_4: None,
                                 unk5: false,
-                                fragment_bytes_index: image_bytes_index,
+                                fragment_bytes_index: image_bytes_index as i16,
                                 offset_y: position.y.try_into().unwrap(),
                                 offset_x: position.x.try_into().unwrap(),
                                 flip,
                                 is_mosaic: false,
                                 pal_idx: 0,
                                 resolution,
+                                tile_num: 0,
                             });
                     }
                     // And let’s no forget to clean all this!

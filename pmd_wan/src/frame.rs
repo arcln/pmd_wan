@@ -17,7 +17,7 @@ impl Frame {
         let mut previous_fragment_bytes = None;
         loop {
             let (fragment, is_last) = Fragment::new_from_bytes(file, previous_fragment_bytes)?;
-            previous_fragment_bytes = Some(fragment.fragment_bytes_index);
+            previous_fragment_bytes = Some(fragment.fragment_bytes_index as usize);
             fragments.push(fragment);
             trace!("its data: {:?}", fragments[fragments.len() - 1]);
             if is_last {
@@ -47,13 +47,16 @@ impl Frame {
                 )
                 .with_context(move || format!("Can't write the fragment {:?}", fragment))?;
             fragment_alloc_counter += fragment.resolution.chunk_to_allocate_for_fragment();
-            previous_fragment_bytes = Some(fragment.fragment_bytes_index);
+            previous_fragment_bytes = Some(fragment.fragment_bytes_index as usize);
         }
         Ok(fragment_alloc_counter)
     }
 
     /// Returns: size to allocate for the fragments of this frame
     pub fn compute_fragment_alloc_counter(&self) -> u16 {
-        self.fragments.iter().map(|f| f.resolution.chunk_to_allocate_for_fragment()).sum()
+        self.fragments
+            .iter()
+            .map(|f| f.resolution.chunk_to_allocate_for_fragment())
+            .sum()
     }
 }
